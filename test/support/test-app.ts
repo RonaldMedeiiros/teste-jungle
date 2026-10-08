@@ -1,7 +1,6 @@
 import './test-env';
 import 'reflect-metadata';
-import { MikroORM } from '@mikro-orm/core';
-import { MikroORM as PostgresMikroORM } from '@mikro-orm/postgresql';
+import { MikroORM } from '@mikro-orm/postgresql';
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { v7 as uuidv7 } from 'uuid';
@@ -39,7 +38,7 @@ export async function startTestApp(): Promise<TestApp> {
 export async function isDatabaseReachable(): Promise<boolean> {
   const { default: config } = await import('../../src/mikro-orm.config');
   try {
-    const orm = await PostgresMikroORM.init({ ...config, connect: true });
+    const orm = await MikroORM.init({ ...config, connect: true });
     await orm.em.getConnection().execute('select 1');
     await orm.close(true);
     return true;

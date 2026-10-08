@@ -1,4 +1,3 @@
-// Servidor de teste: entrega index.html e repassa /api1/* e /api2/* para as duas instâncias da API.
 const PORT = Number(process.env.FRONTEND_PORT ?? 8080);
 const TARGETS: Record<string, string> = {
   api1: process.env.API1_URL ?? 'http://localhost:3001',

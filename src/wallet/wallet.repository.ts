@@ -134,7 +134,7 @@ function decodeCursor(raw: string): { createdAt: string; id: string } {
 @Injectable()
 export class WalletRepository {
   async setLockTimeout(em: EntityManager, milliseconds: number): Promise<void> {
-    await em.getConnection().execute(`set local lock_timeout = '${milliseconds}ms'`);
+    await em.execute(`set local lock_timeout = '${milliseconds}ms'`);
   }
 
   async lockById(em: EntityManager, walletId: string): Promise<Wallet | null> {
@@ -189,7 +189,7 @@ export class WalletRepository {
   }
 
   async sumLedger(em: EntityManager, walletId: string, currency: string): Promise<LedgerSum> {
-    const rows = await em.getConnection().execute<Array<{ total: string; entries: string }>>(
+    const rows = await em.execute<Array<{ total: string; entries: string }>>(
       `select
          coalesce(sum(case direction when 'CREDIT' then amount else -amount end), 0)::numeric(20,2)::text as total,
          count(*)::text as entries

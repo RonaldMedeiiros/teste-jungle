@@ -172,9 +172,9 @@ describe.skipIf(!reachable)('garantias no schema do banco', () => {
 
     await insertTransaction(walletId, playerId, { externalTransactionId });
 
-    await expect(insertTransaction(walletId, playerId, { externalTransactionId })).rejects.toThrow(
-      /wager_transactions_provider_external_unique/,
-    );
+    await expect(
+      insertTransaction(walletId, playerId, { externalTransactionId, idempotencyKey: uuidv7() }),
+    ).rejects.toThrow(/wager_transactions_provider_external_unique/);
   });
 
   test('refund e rollback nao podem ser gravados sem referencia', async () => {

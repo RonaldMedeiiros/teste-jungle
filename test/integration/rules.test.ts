@@ -359,11 +359,12 @@ describe.skipIf(!reachable)('idempotencia', () => {
   test('a mesma key com payload diferente e conflito, nunca replay', async () => {
     const wallet = await createWallet(baseUrl, '100.00');
     const idempotencyKey = `provider-a:${uuidv7()}`;
+    const externalTransactionId = uuidv7();
 
     const first = await submit(baseUrl, wallet, {
       kind: 'BET',
       amount: '25.00',
-      externalTransactionId: 'tx-igual',
+      externalTransactionId,
       idempotencyKey,
     });
     expect(first.status).toBe(200);
@@ -371,7 +372,7 @@ describe.skipIf(!reachable)('idempotencia', () => {
     const conflict = await submit(baseUrl, wallet, {
       kind: 'BET',
       amount: '26.00',
-      externalTransactionId: 'tx-igual',
+      externalTransactionId,
       idempotencyKey,
     });
 
