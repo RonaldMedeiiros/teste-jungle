@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Jungle Wagering - teste</title>
+<style>
+  body { font-family: sans-serif; max-width: 900px; margin: 16px auto; padding: 0 16px; }
+  fieldset { margin-bottom: 16px; }
+  label { display: inline-block; margin: 4px 12px 4px 0; }
+  input, select { font-family: monospace; }
+  input.id { width: 300px; }
+  pre { background: #f2f2f2; padding: 8px; overflow: auto; max-height: 400px; }
+  .err { color: #b00; }
+</style>
+</head>
+<body>
+<h1>Jungle Wagering - teste</h1>
+
+<p>
+  Instância:
+  <select id="api"><option value="api1">api-1 (:3001)</option><option value="api2">api-2 (:3002)</option></select>
+  <button onclick="call('GET', '/health/ready')">Health</button>
+</p>
+
+<fieldset>
+  <legend>1. Criar carteira</legend>
+  <label>playerId <input id="playerId" class="id"></label>
+  <button onclick="el('playerId').value = crypto.randomUUID()">novo</button><br>
+  <label>saldo inicial <input id="initAmount" value="1000.00" size="10"></label>
+  <label>moeda <input id="initCurrency" value="BRL" size="4"></label>
+  <button onclick="createWallet()">Criar</button>
+</fieldset>
+
+<fieldset>
+  <legend>2. Carteira</legend>
+  <label>walletId <input id="walletId" class="id"></label>
+  <button onclick="call('GET', '/wallets/' + v('walletId'))">Saldo</button>
+  <button onclick="call('GET', '/wallets/' + v('walletId') + '/ledger')">Extrato</button>
+  <button onclick="call('POST', '/wallets/' + v('walletId') + '/reconciliation')">Reconciliar</button>
+</fieldset>
+
+<fieldset>
+  <legend>3. Transação (aposta / ganho / estorno)</legend>
+  <label>tipo
+    <select id="kind">
+      <option>BET</option><option>WIN</option><option>LOSS</option><option>REFUND</option><option>ROLLBACK</option>
+    </select>
+  </label>
+  <label>valor <input id="amount" value="25.00" size="10"></label>
+  <label>moeda <input id="currency" value="BRL" size="4"></label><br>
+  <label>providerId <input id="providerId" value="provider-a"></label>
+  <label>gameId <input id="gameId" value="fortune-chimp"></label>
+  <label>roundId <input id="roundId" value="round-1"></label><br>
+  <label>externalTransactionId <input id="extId"></label>
+  <button onclick="el('extId').value = 'tx-' + Date.now()">novo</button><br>
+  <label>referenceExternalTransactionId (REFUND/ROLLBACK) <input id="refId"></label><br>
+  <label>Idempotency-Key <input id="idemKey" size="40" placeholder="vazio = providerId:externalTransactionId"></label><br>
+  <button onclick="submitTx()">Enviar</button>
+  <small>(reenviar com o mesmo externalTransactionId testa idempotência)</small>
+</fieldset>
+
+<fieldset>
+  <legend>4. Consultar transação</legend>
+  <label>transactionId <input id="txId" class="id"></label>
+  <button onclick="call('GET', '/wagering/transactions/' + v('txId'))">Por id</button>
+  <button onclick="call('GET', '/providers/' + v('providerId') + '/wagering/transactions/' + v('extId'))">Por provider + externalTransactionId</button>
+</fieldset>
+
+<h3>Resposta <span id="status"></span></h3>
+<pre id="out">—</pre>
+
+<script>
+const el = (id) => document.getElementById(id);
+const v = (id) => el(id).value.trim();
+
+el('playerId').value = crypto.randomUUID();
+el('extId').value = 'tx-' + Date.now();
+
+async function call(method, path, body, headers = {}) {
+  const url = '/' + v('api') + path;
+  el('status').textContent = method + ' ' + path + ' ...';
+  el('status').className = '';
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: body ? { 'content-type': 'application/json', ...headers } : headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = text; }
+    el('status').textContent = method + ' ' + path + ' → ' + res.status;
+    el('status').className = res.ok ? '' : 'err';
+    el('out').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    return { ok: res.ok, data };
+  } catch (e) {
+    el('status').textContent = 'falhou';
+    el('status').className = 'err';
+    el('out').textContent = String(e);
+    return { ok: false };
+  }
+}
+
+async function createWallet() {
+  const r = await call('POST', '/wallets', {
+    playerId: v('playerId'),
+    initialBalance: { amount: v('initAmount'), currency: v('initCurrency') },
+  });
+  if (r.ok && r.data.id) el('walletId').value = r.data.id;
+}
+
+async function submitTx() {
+  const body = {
+    providerId: v('providerId'),
+    externalTransactionId: v('extId'),
+    playerId: v('playerId'),
+    walletId: v('walletId'),
+    roundId: v('roundId'),
+    gameId: v('gameId'),
+    kind: v('kind'),
+    money: { amount: v('amount'), currency: v('currency') },
+  };
+  if (v('refId')) body.referenceExternalTransactionId = v('refId');
+  const key = v('idemKey') || v('providerId') + ':' + v('extId');
+  const r = await call('POST', '/wagering/transactions', body, { 'Idempotency-Key': key });
+  if (r.data && r.data.transactionId) el('txId').value = r.data.transactionId;
+}
+</script>
+</body>
+</html>
